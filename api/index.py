@@ -19,6 +19,35 @@ def result():
    dict = {'phy':50,'che':60,'maths':70}
    return render_template('result.html', result = dict)
 
+@app.route('/proxy', methods=['GET', 'POST'])
+def proxy():
+    target_url = request.headers.get('X-Target-Url')
+
+    if not target_url:
+        return {"error": "Missing X-Target-Url header"}, 400
+
+    try:
+        if request.method == 'POST':
+            # 1. استلام البيانات الكبيرة من الـ Body (لأننا استخدمنا data=)
+            payload = request.form.to_dict()
+
+            # 2. إذا لم يجد بيانات في الـ Body، يقرأ من الرابط (كخطة بديلة)
+            if not payload:
+                payload = request.args.to_dict()
+
+            # 3. إرسال البيانات إلى فيسبوك باستخدام data=
+            response = requests.post(target_url, data=payload, timeout=30)
+            return response.text, response.status_code
+
+        elif request.method == 'GET':
+            # طلبات GET لا تحتوي على Body، لذا نستخدم params
+            payload = request.args.to_dict()
+            response = requests.get(target_url, params=payload, timeout=30)
+            return response.text, response.status_code
+
+    except Exception as e:
+        return {"error": str(e)}, 500
+
 # المسار الجديد لإعادة تشغيل مساحة Hugging Face
 @app.route('/restart_space', methods=['GET'])
 def restart_space():
